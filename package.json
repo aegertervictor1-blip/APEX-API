@@ -1,18 +1,9 @@
 {
   "name": "apex-api",
   "version": "1.0.0",
-  "description": "API d'envoi automatique des mails de confirmation de reservation - APEX Racing Experience",
-  "main": "server.js",
+  "description": "API serverless d'envoi automatique des mails de confirmation - APEX Racing Experience",
   "type": "module",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
-  },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
     "nodemailer": "^6.9.14"
   }
 }

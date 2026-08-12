@@ -1,20 +1,9 @@
-import express from "express";
-import cors from "cors";
+// Fonction serverless Vercel : POST /api/reservation
+// Envoie le mail de confirmation au client + une notif au propriétaire.
+// Les identifiants Gmail viennent des variables d'environnement Vercel.
 import nodemailer from "nodemailer";
-import { confirmationEmail } from "./emailTemplate.js";
+import { confirmationEmail } from "../emailTemplate.js";
 
-const app = express();
-app.use(express.json());
-
-// --- CORS : autorise ton site à appeler l'API ---
-// Mets l'URL de ton site dans la variable ALLOWED_ORIGIN sur Railway.
-// Par défaut on autorise tout (pratique au début, à restreindre ensuite).
-const allowed = process.env.ALLOWED_ORIGIN || "*";
-app.use(cors({ origin: allowed }));
-
-// --- Transport Gmail : les identifiants viennent des variables d'env Railway ---
-// GMAIL_USER            = ton adresse Gmail (ex. aegertervictor1@gmail.com)
-// GMAIL_APP_PASSWORD    = ton mot de passe d'application (16 lettres, SANS espaces)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -23,27 +12,29 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Où sont envoyées les notifications de nouvelle réservation (par défaut = toi)
 const OWNER_EMAIL = process.env.OWNER_EMAIL || process.env.GMAIL_USER;
 
-// Petite référence unique du type APEX-7F3K9
 function makeRef() {
   return "APEX-" + Math.random().toString(36).slice(2, 7).toUpperCase();
 }
-
 function isEmail(v) {
   return typeof v === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
-// Santé (Railway ping cette route)
-app.get("/", (_req, res) => res.send("APEX API OK"));
+export default async function handler(req, res) {
+  // CORS : autorise ton site à appeler l'API
+  const origin = process.env.ALLOWED_ORIGIN || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-// --- Réservation ---
-app.post("/api/reservation", async (req, res) => {
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST")
+    return res.status(405).json({ ok: false, error: "Méthode non autorisée." });
+
   try {
     const { prenom, email, formule, manche, equipage, montant } = req.body || {};
 
-    // Validation minimale
     if (!prenom || !isEmail(email) || !formule) {
       return res.status(400).json({ ok: false, error: "Champs manquants ou email invalide." });
     }
@@ -58,7 +49,7 @@ app.post("/api/reservation", async (req, res) => {
       reference,
     };
 
-    // 1) Mail de confirmation au client (design APEX)
+    // 1) Confirmation au client (design APEX)
     await transporter.sendMail({
       from: `"APEX Racing Expérience" <${process.env.GMAIL_USER}>`,
       to: email,
@@ -66,7 +57,7 @@ app.post("/api/reservation", async (req, res) => {
       html: confirmationEmail(data),
     });
 
-    // 2) Notification à toi (le propriétaire)
+    // 2) Notification à toi
     await transporter.sendMail({
       from: `"APEX Réservations" <${process.env.GMAIL_USER}>`,
       to: OWNER_EMAIL,
@@ -79,12 +70,9 @@ app.post("/api/reservation", async (req, res) => {
         `Équipage : ${data.equipage}\nMontant : ${data.montant} €\n`,
     });
 
-    return res.json({ ok: true, reference });
+    return res.status(200).json({ ok: true, reference });
   } catch (err) {
     console.error("Erreur envoi mail:", err);
     return res.status(500).json({ ok: false, error: "Envoi impossible pour le moment." });
   }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`APEX API en écoute sur le port ${PORT}`));
+}

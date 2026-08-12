@@ -1,84 +1,80 @@
-# APEX API — envoi automatique des mails de confirmation
+# APEX API — envoi automatique des mails de confirmation (Vercel)
 
-Petit serveur qui envoie un mail de confirmation (design APEX) au client
-dès qu'il réserve, + une notification à toi. Le mot de passe Gmail reste
-**côté serveur** (variable Railway), jamais dans le site public.
+Fonction serverless qui envoie un mail de confirmation (design APEX) au client
+dès qu'il réserve, + une notification à toi. Hébergée **gratuitement sur Vercel**,
+disponible en permanence, sans mise en veille. Le mot de passe Gmail reste
+**côté serveur** (variable Vercel), jamais dans le site public.
+
+## Structure
+```
+api/reservation.js   -> POST : envoie les mails (le cœur)
+api/index.js         -> GET  : route de santé ("APEX API OK")
+emailTemplate.js     -> le mail HTML APEX
+package.json         -> dépendance nodemailer
+```
 
 ---
 
 ## 🔐 ÉTAPE 0 — Sécurité (à faire en premier)
 
-1. Va sur https://myaccount.google.com/apppasswords
+1. https://myaccount.google.com/apppasswords
 2. **Supprime** l'ancien mot de passe d'application (il a fuité dans un chat).
-3. **Crée-en un nouveau** (nom : "APEX API"). Google donne 16 lettres type
-   `abcd efgh ijkl mnop` → tu les colleras **sans les espaces** : `abcdefghijklmnop`.
-4. Ce nouveau mot de passe ne va **que** dans Railway (étape 3). Jamais dans le code, jamais renvoyé dans un chat.
+3. **Crée-en un nouveau** ("APEX API") → 16 lettres → tu les colleras **sans espaces**.
+4. Ce mot de passe ne va **que** dans Vercel (étape 3). Jamais dans le code.
 
 ---
 
-## 💻 ÉTAPE 1 — Pousser le projet sur GitHub
+## 💻 ÉTAPE 1 — Mettre à jour GitHub
 
-Ouvre un terminal dans ce dossier `apex-api/` :
+Le code a changé (passage en serverless). Dans le Terminal, depuis `apex-api/` :
 
 ```bash
-git init
 git add .
-git commit -m "APEX API - envoi mail de confirmation"
+git commit -m "Version serverless pour Vercel"
+git push
 ```
-
-Crée le dépôt sur GitHub (via le site github.com → New repository → nom `apex-api`,
-laisse-le **vide**, pas de README). Puis relie et pousse :
-
-```bash
-git branch -M main
-git remote add origin https://github.com/TON-PSEUDO/apex-api.git
-git push -u origin main
-```
-
-> `.gitignore` empêche déjà `node_modules/` et `.env` de partir sur GitHub. ✅
 
 ---
 
-## 🚂 ÉTAPE 2 — Déployer sur Railway
+## ▲ ÉTAPE 2 — Déployer sur Vercel
 
-1. Va sur https://railway.app → connecte-toi avec GitHub.
-2. **New Project** → **Deploy from GitHub repo** → choisis `apex-api`.
-3. Railway détecte Node.js et lance `npm start` tout seul.
+1. Va sur https://vercel.com → **Sign up / Log in with GitHub**.
+2. **Add New… → Project** → importe le dépôt **APEX-API**.
+3. Ne touche à rien (pas de build à configurer) → clique **Deploy**.
+
+Vercel détecte tout seul le dossier `api/` et crée les endpoints.
 
 ---
 
-## 🔑 ÉTAPE 3 — Mettre tes secrets dans Railway (JAMAIS dans le code)
+## 🔑 ÉTAPE 3 — Mettre tes secrets dans Vercel (JAMAIS dans le code)
 
-Dans ton projet Railway → onglet **Variables** → ajoute :
+Projet Vercel → **Settings → Environment Variables** → ajoute :
 
 | Nom | Valeur |
 |-----|--------|
 | `GMAIL_USER` | `aegertervictor1@gmail.com` |
 | `GMAIL_APP_PASSWORD` | ton **nouveau** mot de passe d'appli (16 lettres, sans espaces) |
 | `OWNER_EMAIL` | `aegertervictor1@gmail.com` |
-| `ALLOWED_ORIGIN` | `*` (tu remplaceras par l'URL de ton site plus tard) |
+| `ALLOWED_ORIGIN` | `*` (tu mettras l'URL de ton site plus tard) |
 
-Railway redéploie automatiquement après l'ajout des variables.
+Puis onglet **Deployments → … → Redeploy** pour que les variables soient prises en compte.
 
 ---
 
-## 🌐 ÉTAPE 4 — Récupérer l'URL publique de l'API
+## 🌐 ÉTAPE 4 — Ton URL d'API
 
-Dans Railway → onglet **Settings** → **Networking** → **Generate Domain**.
-Tu obtiens une URL du type :
-
+Vercel te donne une URL du type :
 ```
-https://apex-api-production.up.railway.app
+https://apex-api.vercel.app
 ```
-
-Teste-la : ouvre-la dans le navigateur → tu dois voir **"APEX API OK"**. ✅
+- Test santé : ouvre `https://apex-api.vercel.app/api` → tu dois voir **"APEX API OK"**. ✅
+- L'endpoint de réservation est : `https://apex-api.vercel.app/api/reservation`
 
 ---
 
 ## 🔗 ÉTAPE 5 — Brancher le site sur l'API
 
-Dans le formulaire d'inscription du site, remplace l'envoi par un appel à l'API.
-Exemple minimal (à adapter à tes champs) :
+Dans le formulaire d'inscription du site :
 
 ```html
 <script>
@@ -92,40 +88,28 @@ async function reserverApex(e) {
     equipage: document.querySelector("#equipage").value,  // ex. "2 pilotes"
     montant:  document.querySelector("#montant").value    // ex. "499"
   };
-  const r = await fetch("https://TON-URL-RAILWAY.up.railway.app/api/reservation", {
+  const r = await fetch("https://apex-api.vercel.app/api/reservation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
   const data = await r.json();
-  if (data.ok) {
-    alert("Réservation confirmée ! Vérifie tes mails 🏁 (réf " + data.reference + ")");
-  } else {
-    alert("Oups : " + (data.error || "réessaie plus tard"));
-  }
+  if (data.ok) alert("Réservation confirmée ! Vérifie tes mails 🏁 (réf " + data.reference + ")");
+  else alert("Oups : " + (data.error || "réessaie plus tard"));
 }
 </script>
 ```
 
-> Quand ton site aura une URL publique, remplace `ALLOWED_ORIGIN=*` par cette URL
-> dans Railway (plus sécurisé).
+> Quand ton site aura une URL publique, remplace `ALLOWED_ORIGIN=*`
+> par cette URL dans Vercel (plus sécurisé), puis Redeploy.
 
 ---
 
-## 🧪 (Optionnel) Tester en local avant de déployer
+## 🧪 (Optionnel) Tester l'endpoint
 
 ```bash
-npm install
-cp .env.example .env      # puis colle ton mot de passe dans .env
-npm start
-```
-
-Puis dans un autre terminal :
-
-```bash
-curl -X POST http://localhost:3000/api/reservation \
+curl -X POST https://apex-api.vercel.app/api/reservation \
   -H "Content-Type: application/json" \
   -d '{"prenom":"Victor","email":"ton-email@gmail.com","formule":"Standard 499 €","montant":"499"}'
 ```
-
 Tu dois recevoir le mail de confirmation. ✅

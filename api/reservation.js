@@ -33,19 +33,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: "Méthode non autorisée." });
 
   try {
-    // --- Diagnostic temporaire : vérifie que les variables sont bien présentes ---
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      return res.status(500).json({
-        ok: false,
-        error: "Variables manquantes",
-        debug: {
-          GMAIL_USER_present: !!process.env.GMAIL_USER,
-          GMAIL_APP_PASSWORD_present: !!process.env.GMAIL_APP_PASSWORD,
-          GMAIL_APP_PASSWORD_length: (process.env.GMAIL_APP_PASSWORD || "").length,
-        },
-      });
-    }
-
     const { prenom, email, formule, manche, equipage, montant } = req.body || {};
 
     if (!prenom || !isEmail(email) || !formule) {
@@ -86,11 +73,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, reference });
   } catch (err) {
     console.error("Erreur envoi mail:", err);
-    // Diagnostic temporaire : renvoie la vraie cause de l'erreur.
-    return res.status(500).json({
-      ok: false,
-      error: "Envoi impossible pour le moment.",
-      debug: { message: err && err.message, code: err && err.code },
-    });
+    return res.status(500).json({ ok: false, error: "Envoi impossible pour le moment." });
   }
 }
